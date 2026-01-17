@@ -2,13 +2,13 @@ import httpx
 from selectolax.parser import HTMLParser
 
 
-def get_html(base_url:str):
+def get_html(base_url:str, page: int):
 
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
     }
 
-    resp = httpx.get(base_url, headers=headers)
+    resp = httpx.get(base_url + str(page), headers=headers, follow_redirects=True)
     # Parse page html
     html = HTMLParser(resp.text)
     return html
@@ -34,13 +34,17 @@ def parse_page(html):
 
         if item["full-price"] == None:
             item["full-price"] = extract_text(product, "span[data-ui=compare-at-price]")
-        print(item)
+        yield item
 
 
 def main():
-    base_url = "https://www.rei.com/c/backpacking-tents"
-    list_page_html = get_html(base_url)
-    parse_page(list_page_html)
+    base_url = "https://www.rei.com/c/backpacking-tents?page="
+    for page in range(1, 6):
+        list_page_html = get_html(base_url, page)
+        data = parse_page(list_page_html)
+        for item in data:
+            print(item)
+
 
 
 if __name__ == "__main__":
