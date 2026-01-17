@@ -1,5 +1,6 @@
 import httpx
 from selectolax.parser import HTMLParser
+import time
 
 
 def get_html(base_url:str, page: int):
@@ -7,8 +8,14 @@ def get_html(base_url:str, page: int):
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
     }
+    try:
+        resp = httpx.get(base_url + str(page), headers=headers, follow_redirects=True)
+        resp.raise_for_status()
+    except httpx.HTTPStatusError as exc:
+        print(f"Page Limit Exceeded! Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
+        return False
 
-    resp = httpx.get(base_url + str(page), headers=headers, follow_redirects=True)
+
     # Parse page html
     html = HTMLParser(resp.text)
     return html
@@ -39,11 +46,14 @@ def parse_page(html):
 
 def main():
     base_url = "https://www.rei.com/c/backpacking-tents?page="
-    for page in range(1, 6):
+    for page in range(1, 7):
         list_page_html = get_html(base_url, page)
+        if list_page_html is False:
+            break
         data = parse_page(list_page_html)
         for item in data:
             print(item)
+        time.sleep(1)
 
 
 
