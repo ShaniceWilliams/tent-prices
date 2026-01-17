@@ -1,59 +1,89 @@
 import httpx
 from selectolax.parser import HTMLParser
 import time
+from urllib.parse import urljoin
+from dataclasses import dataclass, asdict
+
+@dataclass
+class Product:
+    name: str | None
+    item_num: str | None
+    price: str | None
+    rating: float | None
 
 
-def get_html(base_url:str, page: int):
+def get_html(url:str, **kwargs):
+    """
+    Get object containing html of specified url page
 
+    """
     headers = {
         "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
     }
+    
+    if kwargs.get("page"):
+        resp = httpx.get(url + str(kwargs.get("page")), headers=headers, follow_redirects=True)
+    else:
+        resp = httpx.get(url, headers=headers, follow_redirects=True)
+
     try:
-        resp = httpx.get(base_url + str(page), headers=headers, follow_redirects=True)
         resp.raise_for_status()
     except httpx.HTTPStatusError as exc:
         print(f"Page Limit Exceeded! Error response {exc.response.status_code} while requesting {exc.request.url!r}.")
         return False
-
 
     # Parse page html
     html = HTMLParser(resp.text)
     return html
 
 
-def extract_text(html, selector):
+def extract_text(html: HTMLParser, selector: str):
+    """
+    Extract text from HTMLParser Object using specified css selector.
+    """
     try:
         return html.css_first(selector).text()
     except AttributeError:
         return None
 
 
-def parse_page(html):
+def parse_list_page(html: HTMLParser):
+    """
+    Yields the url of each product on the product list page.
+    """
     # Locate product cards
     products = html.css("li.VcGDfKKy_dvNbxUqm29K")
-
     for product in products:
-        item = {
-            "name" : extract_text(product, ".Xpx0MUGhB7jSm5UvK2EY"),
-            "full-price": extract_text(product, "span[data-ui=full-price]"),
-            "sale-price": extract_text(product, "span[data-ui=sale-price]"),
-        }
+        yield urljoin("https://www.rei.com", product.css_first("a").attributes["href"])
 
-        if item["full-price"] == None:
-            item["full-price"] = extract_text(product, "span[data-ui=compare-at-price]")
-        yield item
+
+def parse_product_page(html:HTMLParser) -> Product:
+    """
+    Yield product details
+    """
+    new_product = Product(
+        name=extract_text(html, "h1#product-page-title"),
+        item_num=extract_text(html, "a.cdr-breadcrumb__link_16-2-1"),
+        price=extract_text(html, "span#buy-box-product-price"),
+        rating=extract_text(html, "span.cdr-rating__number_16-2-1"),
+    )
+    return new_product
 
 
 def main():
+    products = []
     base_url = "https://www.rei.com/c/backpacking-tents?page="
-    for page in range(1, 7):
-        list_page_html = get_html(base_url, page)
+    for x in range(1, 2):
+        list_page_html = get_html(base_url, page=x)
         if list_page_html is False:
             break
-        data = parse_page(list_page_html)
-        for item in data:
-            print(item)
-        time.sleep(1)
+        product_urls = parse_list_page(list_page_html)
+        for product_url in product_urls:
+            product_html = get_html(product_url)
+            products.append(parse_product_page(product_html))
+            time.sleep(1)
+    for product in products:
+        print(asdict(product))
 
 
 
