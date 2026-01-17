@@ -1,20 +1,18 @@
 import httpx
 from selectolax.parser import HTMLParser
 
-url = "https://www.rei.com/c/backpacking-tents"
-headers = {
-    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
-}
 
-resp = httpx.get(url, headers=headers)
+def get_html(base_url:str):
 
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64; rv:146.0) Gecko/20100101 Firefox/146.0"
+    }
 
+    resp = httpx.get(base_url, headers=headers)
+    # Parse page html
+    html = HTMLParser(resp.text)
+    return html
 
-# Parse page html
-html = HTMLParser(resp.text)
-
-# Locate products
-products = html.css("li.VcGDfKKy_dvNbxUqm29K")
 
 def extract_text(html, selector):
     try:
@@ -23,14 +21,27 @@ def extract_text(html, selector):
         return None
 
 
+def parse_page(html):
+    # Locate product cards
+    products = html.css("li.VcGDfKKy_dvNbxUqm29K")
 
-for product in products:
-    item = {
-        "name" : extract_text(product, ".Xpx0MUGhB7jSm5UvK2EY"),
-        "full-price": extract_text(product, "span[data-ui=full-price]"),
-        "sale-price": extract_text(product, "span[data-ui=sale-price]"),
-    }
+    for product in products:
+        item = {
+            "name" : extract_text(product, ".Xpx0MUGhB7jSm5UvK2EY"),
+            "full-price": extract_text(product, "span[data-ui=full-price]"),
+            "sale-price": extract_text(product, "span[data-ui=sale-price]"),
+        }
 
-    if item["full-price"] == None:
-        item["full-price"] = extract_text(product, "span[data-ui=compare-at-price]")
-    print(item)
+        if item["full-price"] == None:
+            item["full-price"] = extract_text(product, "span[data-ui=compare-at-price]")
+        print(item)
+
+
+def main():
+    base_url = "https://www.rei.com/c/backpacking-tents"
+    list_page_html = get_html(base_url)
+    parse_page(list_page_html)
+
+
+if __name__ == "__main__":
+    main()
