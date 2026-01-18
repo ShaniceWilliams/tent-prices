@@ -45,7 +45,8 @@ def extract_text(html: HTMLParser, selector: str):
     Extract text from HTMLParser Object using specified css selector.
     """
     try:
-        return html.css_first(selector).text()
+        text = html.css_first(selector).text()
+        return clean_text_data(text)
     except AttributeError:
         return None
 
@@ -71,6 +72,13 @@ def parse_product_page(html:HTMLParser) -> Product:
         rating=extract_text(html, "span.cdr-rating__number_16-2-1"),
     )
     return asdict(new_product)
+
+def clean_text_data(value: str) -> str:
+    chars_to_remove = ["$"]
+    for char in chars_to_remove:
+        if char in value:
+            value = value.replace(char,"")
+    return value.strip()
 
 
 def export_to_json(products: list):
