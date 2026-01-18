@@ -87,10 +87,14 @@ def export_to_csv(products: list):
         writer.writerows(products)
     print("Saved to CSV.")
 
-
+def append_to_csv(product):
+    field_names = [field.name for field in fields(Product)]
+    with open("products.csv", "a") as f:
+        writer = csv.DictWriter(f, field_names)
+        writer.writerow(product)
 
 def main():
-    products = []
+    # products = []
     base_url = "https://www.rei.com/c/backpacking-tents?page="
     for x in range(1, 2):
         list_page_html = get_html(base_url, page=x)
@@ -99,11 +103,11 @@ def main():
         product_urls = parse_list_page(list_page_html)
         for product_url in product_urls:
             product_html = get_html(product_url)
-            products.append(parse_product_page(product_html))
+            append_to_csv(parse_product_page(product_html))
             time.sleep(1)
 
-    export_to_json(products)
-    export_to_csv(products)
+    # export_to_json(products)
+    # export_to_csv(products)
 
 
 
