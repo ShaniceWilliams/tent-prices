@@ -2,7 +2,10 @@ import httpx
 from selectolax.parser import HTMLParser
 import time
 from urllib.parse import urljoin
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
+import json
+import csv
+
 
 @dataclass
 class Product:
@@ -67,7 +70,23 @@ def parse_product_page(html:HTMLParser) -> Product:
         price=extract_text(html, "span#buy-box-product-price"),
         rating=extract_text(html, "span.cdr-rating__number_16-2-1"),
     )
-    return new_product
+    return asdict(new_product)
+
+
+def export_to_json(products: list):
+    with open("products.json", "w") as f:
+        json.dump(products, f, ensure_ascii=False, indent=4)
+    print("Saved to JSON.")
+
+
+def export_to_csv(products: list):
+    field_names = [field.name for field in fields(Product)]
+    with open("products.csv", "w") as f:
+        writer = csv.DictWriter(f, field_names)
+        writer.writeheader()
+        writer.writerows(products)
+    print("Saved to CSV.")
+
 
 
 def main():
@@ -82,8 +101,9 @@ def main():
             product_html = get_html(product_url)
             products.append(parse_product_page(product_html))
             time.sleep(1)
-    for product in products:
-        print(asdict(product))
+
+    export_to_json(products)
+    export_to_csv(products)
 
 
 
